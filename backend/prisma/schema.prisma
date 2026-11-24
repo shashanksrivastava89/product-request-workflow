@@ -1,0 +1,1057 @@
+// This is your Prisma schema file
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model for authentication and authorization
+model User {
+  id               String   @id @default(uuid())
+  email            String   @unique
+  password         String
+  name             String
+  role             UserRole @default(REQUESTER)
+  /// When true, user has super-approver powers in addition to their primary `role` (e.g. REQUESTER + super).
+  isSuperApprover  Boolean  @default(false) @map("is_super_approver")
+  /// When true, user is on the Service Admin team, in addition to their primary `role`. A flag and
+  /// not a role because the same people raise service returns: Nia Hargreaves and Baljiwan Woodward are
+  /// REQUESTERs who also review. Grants the service review step, the review-window edit, sight of
+  /// every approved service return, and the SAP sales-order entry.
+  isServiceAdmin   Boolean  @default(false) @map("is_service_admin")
+  /// Customer Service view: the read-only "all requests" pages (`/support/*`) on top of the primary
+  /// role. A flag, like isServiceAdmin, because the five Customer Service members raise returns as
+  /// REQUESTERs (23 Oct 2026): the CUSTOMER_SUPPORT role alone cannot submit, and REQUESTER alone
+  /// cannot see every request. The role still decides who is read-only.
+  isCustomerSupport Boolean @default(false) @map("is_customer_support")
+  businessUnit     String? // CDG or LSG
+  department       String?
+  salesRepCode     String?  @unique
+  requesterGroupId String?
+
+  // Approval hierarchy fields (OLD: strings - names) - KEEP FOR BACKWARD COMPATIBILITY
+  salesManager              String? // Deprecated: Use salesManagerId
+  districtSalesManager      String? // Deprecated: Use districtSalesManagerId
+  nationalSalesManager      String? // Deprecated: Use nationalSalesManagerId
+  localFinanceController    String? // Deprecated: Use localFinanceControllerId
+  directorCommercialManager String? // Deprecated: Use directorCommercialManagerId
+  technicalManager          String? @map("technical_manager") // Deprecated: Use technicalManagerId (for ZNC/ZNCCLAIM/ZINT)
+  nationalTSManager         String? @map("national_ts_manager") // Deprecated: Use nationalTSManagerId (for ZNC/ZNCCLAIM/ZINT)
+
+  // Approval hierarchy fields (NEW: foreign keys)
+  salesManagerId       String? @map("sales_manager_id")
+  salesManagerRelation User?   @relation("SalesManager", fields: [salesManagerId], references: [id], onDelete: SetNull)
+
+  districtSalesManagerId       String? @map("district_sales_manager_id")
+  districtSalesManagerRelation User?   @relation("DistrictSalesManager", fields: [districtSalesManagerId], references: [id], onDelete: SetNull)
+
+  nationalSalesManagerId       String? @map("national_sales_manager_id")
+  nationalSalesManagerRelation User?   @relation("NationalSalesManager", fields: [nationalSalesManagerId], references: [id], onDelete: SetNull)
+
+  localFinanceControllerId       String? @map("local_finance_controller_id")
+  localFinanceControllerRelation User?   @relation("LocalFinanceController", fields: [localFinanceControllerId], references: [id], onDelete: SetNull)
+
+  directorCommercialManagerId       String? @map("director_commercial_manager_id")
+  directorCommercialManagerRelation User?   @relation("DirectorCommercialManager", fields: [directorCommercialManagerId], references: [id], onDelete: SetNull)
+
+  // ZNC/ZNCCLAIM/ZINT hierarchy fields (NEW: foreign keys)
+  technicalManagerId       String? @map("technical_manager_id")
+  technicalManagerRelation User?   @relation("TechnicalManager", fields: [technicalManagerId], references: [id], onDelete: SetNull)
+
+  nationalTSManagerId       String? @map("national_ts_manager_id")
+  nationalTSManagerRelation User?   @relation("NationalTSManager", fields: [nationalTSManagerId], references: [id], onDelete: SetNull)
+
+  // Reverse relations for hierarchy queries
+  subordinatesAsSalesManager              User[] @relation("SalesManager")
+  subordinatesAsDistrictSalesManager      User[] @relation("DistrictSalesManager")
+  subordinatesAsNationalSalesManager      User[] @relation("NationalSalesManager")
+  subordinatesAsLocalFinanceController    User[] @relation("LocalFinanceController")
+  subordinatesAsDirectorCommercialManager User[] @relation("DirectorCommercialManager")
+  subordinatesAsTechnicalManager          User[] @relation("TechnicalManager")
+  subordinatesAsNationalTSManager         User[] @relation("NationalTSManager")
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  formsCreated         SalesForm[] @relation("FormRequester")
+  approvals            Approval[]  @relation("ApprovalAssignee")
+  approvalsActedAsSelf Approval[]  @relation("ApprovalActualActor")
+
+  // Relations for audit trail
+  customersCreated Customer[]       @relation("CustomerCreator")
+  customersUpdated Customer[]       @relation("CustomerUpdater")
+  productsCreated  ProductCatalog[] @relation("ProductCreator")
+  productsUpdated  ProductCatalog[] @relation("ProductUpdater")
+
+  // Master data approval relations
+  customersSubmitted Customer[]       @relation("CustomerSubmitter")
+  customersApproved  Customer[]       @relation("CustomerApprover")
+  customersRejected  Customer[]       @relation("CustomerRejector")
+  productsSubmitted  ProductCatalog[] @relation("ProductSubmitter")
+  productsApproved   ProductCatalog[] @relation("ProductApprover")
+  productsRejected   ProductCatalog[] @relation("ProductRejector")
+
+  // Change history relations
+  customerChanges         CustomerHistory[] @relation("CustomerChanger")
+  productChanges          ProductHistory[]  @relation("ProductChanger")
+  userChanges             UserHistory[]     @relation("UserHistory")
+  userChangesMade         UserHistory[]     @relation("UserChanger")
+  formAttachmentsUploaded FormAttachment[]  @relation("FormAttachmentUploader")
+  formReviewEdits         FormReviewEdit[]  @relation("FormReviewEditor")
+  // Rejected requests this person has deleted from their inbox.
+  approvalInboxDismissals ApprovalInboxDismissal[]
+
+  // Requester rows for this account — one per team the person belongs to. A list, not a single
+  // row: 38 people on UAT hold two or three, and collapsing that to one is what left a requester
+  // with an empty, greyed-out team dropdown in every team but the one recorded on `users`.
+  requesters Requester[]
+
+  @@index([email])
+  @@index([salesRepCode])
+  @@index([salesManagerId])
+  @@index([districtSalesManagerId])
+  @@index([nationalSalesManagerId])
+  @@index([localFinanceControllerId])
+  @@index([directorCommercialManagerId])
+  @@index([technicalManagerId])
+  @@index([nationalTSManagerId])
+  @@map("users")
+}
+
+enum UserRole {
+  REQUESTER
+  SALES_MANAGER
+  DISTRICT_SALES_MANAGER
+  NATIONAL_SALES_MANAGER
+  FINANCE_CONTROLLER
+  DIRECTOR_COMMERCIAL
+  ADMIN
+  SUPER_APPROVER
+  /// Read-only access to approved sample requests (customer support).
+  CUSTOMER_SUPPORT
+}
+
+// Requester groups (migrated from requesters_mapped.json)
+model RequesterGroup {
+  id           String   @id @default(uuid())
+  code         String   @unique // e.g. "cdg-2" (from JSON, for backward compat)
+  name         String
+  businessUnit String // "CDG", "LSG", or "CDG/LSG"
+  isActive     Boolean  @default(true)
+  /// Which flow a directory row belongs to.
+  ///
+  /// Sample Ordering and Return share one requester directory, and until now nothing recorded which
+  /// flow a row was for. The Return sync creates its own groups (code `ret-…`) and puts people in
+  /// them, and because the group carries a business unit of CDG or LSG it landed in the very pool the
+  /// sample wizard queries — which is how Damian Diggin turned up in the Sample Ordering dropdown.
+  /// Vidhi Parsons, 8 Sep: "return scope should not hamper Sample Ordering scope (from approval
+  /// matrix PoV too). We should not merge the two worlds."
+  ///
+  /// NULL means "both flows", which is the honest default: thirteen of the sales teams named in the
+  /// return matrix are the *existing* sample teams (CHUGOKU/SHIKOKU, DA1, KINKI …) and their people
+  /// genuinely raise both kinds of request. Only the six `ret-…` groups are Return-only.
+  ///
+  /// Left as a plain string rather than an enum so a future 'SAMPLE' needs no migration.
+  formScope    String?  @map("form_scope")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  requesters Requester[]
+
+  @@index([businessUnit])
+  @@index([isActive])
+  @@index([formScope])
+  @@map("requester_groups")
+}
+
+// Requesters / Sales reps (migrated from requesters_mapped.json)
+model Requester {
+  id                String   @id @default(uuid())
+  requesterGroupId  String
+  code              String // Sales rep code (e.g. "9002312")
+  name              String
+  /// Link to the User who *is* this requester. Deliberately NOT unique: a person legitimately holds
+  /// several requester rows, one per team they belong to (38 people on UAT hold 2-3), and a unique
+  /// column could only ever express one of them.
+  userId            String?
+  isActive          Boolean  @default(true)
+  /// When set, this requester appears only for that sample request type in the wizard (ZSAM / ZNC / ZNCCLAIM / ZINT). Null = all types.
+  sampleRequestType String?  @map("sample_request_type")
+  /// See RequesterGroup.formScope. Set on the row as well as the group, because a `ret-…` group can
+  /// hold a row whose code is not `ret-` prefixed (Miriama Boreland's is 'TBD'), so the prefix alone is
+  /// not a reliable test.
+  formScope         String?  @map("form_scope")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  requesterGroup RequesterGroup @relation(fields: [requesterGroupId], references: [id], onDelete: Cascade)
+  user           User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([requesterGroupId, name])
+  @@index([requesterGroupId])
+  @@index([code])
+  @@index([userId])
+  @@index([sampleRequestType])
+  @@index([formScope])
+  @@map("requesters")
+}
+
+// ZSAM approval hierarchy mapping (migrated from zsamm_approval_mapping.json)
+model ZsammApprovalMapping {
+  id                        String   @id @default(uuid())
+  requesterName             String // Uppercase, e.g. "LONNIE DUNGAN"
+  businessUnit              String   @default("") // "" = legacy / combined; CDG / LSG for national split
+  salesManager              String?
+  districtSalesManager      String?
+  nationalSalesManager      String?
+  localFinanceController    String?
+  directorCommercialManager String?
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  @@unique([requesterName, businessUnit])
+  @@index([requesterName])
+  @@map("zsamm_approval_mapping")
+}
+
+// ZINT approval hierarchy mapping: RAQA (all amounts) + Global RAQA when form total > ¥1.5M
+model ZintApprovalMapping {
+  id                   String   @id @default(uuid())
+  requesterName        String
+  businessUnit         String   @default("") // CDG / LSG / "" for legacy single row
+  salesManager         String?
+  districtSalesManager String?
+  nationalSalesManager String?
+  csPsManager          String?  @map("cs_ps_manager") // CS/PS Manager
+  raqaManager          String?  @map("raqa_manager") // RAQA Manager (always in chain when set)
+  globalRaqaManager    String?  @map("global_raqa_manager") // Global RAQA Manager (when ZINT total > ¥1,500,000)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@unique([requesterName, businessUnit])
+  @@index([requesterName])
+  @@index([businessUnit])
+  @@map("zint_approval_mapping")
+}
+
+// ZNC (Installation) approval hierarchy mapping: ➋ SM → ➌ DSM → ❹ NSM → ➎ TM → ❻ NTSM → ➐ LFC (>¥3M) → ➑ DCM (>¥3M)
+model ZncApprovalMapping {
+  id                        String   @id @default(uuid())
+  requesterName             String
+  businessUnit              String   @default("") // CDG / LSG / "" for legacy single row
+  salesManager              String?
+  districtSalesManager      String?
+  nationalSalesManager      String?
+  technicalManager          String?  @map("technical_manager")
+  nationalTSManager         String?  @map("national_ts_manager")
+  localFinanceController    String?  @map("local_finance_controller")
+  directorCommercialManager String?  @map("director_commercial_manager")
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  @@unique([requesterName, businessUnit])
+  @@index([requesterName])
+  @@index([businessUnit])
+  @@map("znc_approval_mapping")
+}
+
+// ZNCCLAIM approval hierarchy mapping: SM → DSM → NSM → CS/PS → RAQA (all amounts) + Global RAQA when total > ¥1.5M
+model ZncclaimApprovalMapping {
+  id                   String   @id @default(uuid())
+  requesterName        String
+  businessUnit         String   @default("") // CDG / LSG / "" for legacy single row
+  salesManager         String?
+  districtSalesManager String?
+  nationalSalesManager String?
+  csPsManager          String?  @map("cs_ps_manager")
+  raqaManager          String?  @map("raqa_manager") // RAQA Manager (always in chain when set)
+  globalRaqaManager    String?  @map("global_raqa_manager") // Global RAQA Manager (when claim total > ¥1,500,000)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@unique([requesterName, businessUnit])
+  @@index([requesterName])
+  @@index([businessUnit])
+  @@map("zncclaim_approval_mapping")
+}
+
+// Return flow approval hierarchy: 1st (immediate boss) → 2nd (DSM/TS Mgr) → Final (dept manager)
+// Lookup by requesterName + businessUnit (CDG / LSG / SERVICE). Blank levels are skipped at runtime.
+model ReturnApprovalMapping {
+  id             String   @id @default(uuid())
+  requesterName  String // Uppercase, e.g. "LONNIE DUNGAN"
+  businessUnit   String   @default("") // CDG / LSG / SERVICE
+  /// Team Name from the sheet, and part of the row's identity: the same person appears under more
+  /// than one team (Technical Service sits under both (CDG) and (LSG), which both normalise to
+  /// SERVICE), and the narrower key collapsed 126 sheet rows into 90. Non-null so the unique key
+  /// actually holds - Postgres treats NULLs as distinct.
+  teamName       String   @default("") @map("team_name")
+  firstApprover  String?  @map("first_approver") // Immediate boss
+  secondApprover String?  @map("second_approver") // DSM or Technical Support Manager
+  finalApprover  String?  @map("final_approver") // Sales / Service department manager — level 3
+  // Levels 4-5 come from two extra sheet columns, filled only for non-service groups. They apply
+  // to service-related returns only, so the Service flag gates them (see buildReturnApproverChain).
+  // Column names stay positional: display titles live in approval_chain_config.role_label, so they
+  // do not have to track whatever the sheet headers end up being called.
+  fourthApprover String?  @map("fourth_approver")
+  fifthApprover  String?  @map("fifth_approver")
+  /// Service review step, taken before any approver. Applies to service requests only, via a
+  /// SERVICE_ONLY row in approval_chain_config. Normally a shared mailbox rather than a person, so
+  /// the whole Service Admin team is notified; any isServiceAdmin user may then action it.
+  reviewer       String?  @map("reviewer")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([requesterName, businessUnit, teamName])
+  @@index([requesterName])
+  @@index([businessUnit])
+  @@index([teamName])
+  @@map("return_approval_mapping")
+}
+
+// Approval chain config: defines approval path and amount thresholds per form type (rules in DB)
+model ApprovalChainConfig {
+  id            String            @id @default(uuid())
+  formType      FormType          @map("form_type")
+  level         Int // Approval level (1, 2, 3, ...)
+  roleLabel     String            @map("role_label") // e.g. "Sales Manager", "RAQA Manager"
+  mappingField  String            @map("mapping_field") // Hierarchy key: salesManager, csPsManager, etc.
+  conditionType ApprovalCondition @map("condition_type") // ALWAYS | AMOUNT_LTE | AMOUNT_GT
+  amountValue   Decimal?          @map("amount_value") @db.Decimal(15, 2) // Used when condition is AMOUNT_*
+  sortOrder     Int               @default(0) @map("sort_order") // Order within same level if needed
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@unique([formType, level, mappingField])
+  @@index([formType])
+  @@map("approval_chain_config")
+}
+
+enum ApprovalCondition {
+  ALWAYS // Always include this approver
+  AMOUNT_LTE // Include only if form.totalAmount <= amountValue
+  AMOUNT_GT // Include only if form.totalAmount > amountValue
+  SERVICE_ONLY // Include only if form.isService is true (RETURN levels 4-5)
+}
+
+// Sales Form model - ENHANCED with all required fields
+model SalesForm {
+  id              String   @id @default(uuid())
+  referenceNumber String?  @unique
+  formType        FormType
+  requesterId     String
+  requesterName   String
+  salesRepCodeSap String?
+  businessUnit    String? // CDG or LSG
+  requesterGroup  String?
+
+  requestDate          DateTime
+  expectedDeliveryDate String? // 'ASAP' or ISO date string
+  purpose              String
+
+  // Delivery details
+  deliveryMode DeliveryMode?
+  soldToCode   String?
+  soldToName   String?
+  shipToCode   String?
+  shipToName   String?
+  attentionTo  String?       @map("attention_to") // Optional recipient name for sample shipment (Attention to)
+  endUserCode  String?
+  endUserName  String?
+  address      String?       @db.Text
+  postalCode   String?
+  prefecture   String?
+  phone        String?
+
+  // Approval hierarchy for this form
+  salesManager              String?
+  districtSalesManager      String?
+  nationalSalesManager      String?
+  localFinanceController    String?
+  directorCommercialManager String?
+
+  // Form details
+  commentsForApproval String? @db.Text
+  freeDescription     String? @db.Text
+
+  // Return request details (formType RETURN only; null on every other form type).
+  // Carried on sales_forms rather than a side table so every existing form reader — approval
+  // emails, the approval pages, admin export — keeps working with no extra join.
+  returnType           String? // ZCMR | ZCMR_ZDMR | ZRE | ZRE_ZOR
+  isService            Boolean @default(false) // routes through the two service managers (levels 4-5)
+  originalOrderNumber  String?
+  /// The invoice date of the original sales order. For a standing order this is the FIRST of
+  /// several — the full ordered list lives in `invoiceDates`. Kept populated for every request so
+  /// the print view, the emails and the SAP hand-off always have a single date to read, and so the
+  /// requests submitted before standing orders existed keep working untouched.
+  invoiceDate          String? // date-only 'YYYY-MM-DD'; kept as text like expectedDeliveryDate so no timezone shifts it
+  /// 定期予約 / Standing order. Set by the requester; when true the request may carry more than one
+  /// invoice date, because one standing order is price-adjusted across several billing periods.
+  /// Damian Diggin, 4 Sep 2026: a standing order should be ONE request, not one per invoice date.
+  isStandingOrder      Boolean  @default(false) @map("is_standing_order")
+  quoteRefNo           String?
+  orderReason          String?
+  justification        String? @db.Text
+  dairitenContactName  String?
+  dairitenContactEmail String?
+  /// SAP sales order number for the credit/debit memo, entered by the Service Admin team *after*
+  /// every approval is in. Service returns only — Emi confirmed CS does not need it, as they read
+  /// the order numbers from the SAP document flow.
+  salesOrderNumber     String?
+
+  // Financial
+  totalAmount Decimal @default(0) @db.Decimal(15, 2)
+  currency    String  @default("JPY")
+
+  // Status
+  status            FormStatus @default(DRAFT)
+  submittedAt       DateTime?
+  completedAt       DateTime?
+  approvalMaxLevel  Int?
+  approvalFinalRole String?
+  /// Every earlier submission of a return that was rejected and then reopened, oldest first: who
+  /// submitted it, each approval step with its decision and comment, what the service review
+  /// corrected, and who reopened it. Reopening clears the live approval rows (a form holds one row
+  /// per level) so the resubmission can be routed afresh; this is where that round is kept.
+  approvalHistory   Json?      @map("approval_history")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  requester   User             @relation("FormRequester", fields: [requesterId], references: [id])
+  products    FormProduct[]
+  invoiceDates  FormInvoiceDate[]
+  approvals   Approval[]
+  attachments FormAttachment[]
+  reviewEdits FormReviewEdit[]
+
+  @@index([requesterId])
+  @@index([status])
+  @@index([businessUnit])
+  @@index([referenceNumber])
+  @@index([requestDate])
+  @@map("sales_forms")
+}
+
+/// One record per edit a service reviewer makes while a return sits at its review step.
+///
+/// The reviewer can correct a request somebody else raised, which is the whole point of the step —
+/// but an approver further down must be able to see that it happened and what changed, or they
+/// would be signing off something the requester never submitted. Field-diff shape follows
+/// ProductHistory.fieldChanges, which does the same job for master data.
+model FormReviewEdit {
+  id           String   @id @default(uuid())
+  formId       String   @map("form_id")
+  changedById  String   @map("changed_by_id")
+  changedAt    DateTime @default(now()) @map("changed_at")
+  /// Array of { field, oldValue, newValue }.
+  fieldChanges Json     @map("field_changes")
+  /// The whole request (form, products, invoice dates) as it was BEFORE the first correction.
+  /// Set on a form's first review edit only. The field diffs above are display strings and a
+  /// products summary, so they cannot rebuild a request; this can, which is what lets the review
+  /// team discard every correction and return to what the requester actually submitted.
+  beforeSnapshot Json?  @map("before_snapshot")
+
+  form      SalesForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  changedBy User      @relation("FormReviewEditor", fields: [changedById], references: [id])
+
+  @@index([formId])
+  @@map("form_review_edits")
+}
+
+// ZNC Claim supporting documents (photos, screenshots, PDFs)
+/// Every invoice date on a request, in the order the requester entered them.
+///
+/// A standing order is price-adjusted across several billing periods, so one request legitimately
+/// covers several invoice dates — the case Miriama Boreland raised on 3 Sep. `SalesForm.invoiceDate`
+/// stays as the first of these, so anything that needs exactly one date still has one.
+model FormInvoiceDate {
+  id          String   @id @default(uuid())
+  formId      String   @map("form_id")
+  /// date-only 'YYYY-MM-DD', text for the same reason as SalesForm.invoiceDate
+  invoiceDate String   @map("invoice_date")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  form SalesForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+
+  @@index([formId])
+  @@map("form_invoice_dates")
+}
+
+model FormAttachment {
+  id             String   @id @default(uuid())
+  formId         String   @map("form_id")
+  storedFilename String   @map("stored_filename")
+  clientFilename String   @map("client_filename")
+  fileKind       String   @map("file_kind")
+  sizeBytes      Int      @map("size_bytes")
+  uploadedById   String   @map("uploaded_by_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  form       SalesForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  uploadedBy User      @relation("FormAttachmentUploader", fields: [uploadedById], references: [id])
+
+  @@index([formId])
+  @@map("form_attachments")
+}
+
+enum FormType {
+  ZSAM // Sales Promotion
+  ZNC // Installation
+  ZNCCLAIM // Claim Replacement
+  ZINT // QC Test
+  RETURN // Product return
+}
+
+enum DeliveryMode {
+  CHANNEL
+  DIRECT
+  INTERNAL
+  HEIWA
+}
+
+enum FormStatus {
+  DRAFT
+  PENDING_APPROVAL
+  IN_PROGRESS
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+// Product line items in a form - ENHANCED
+model FormProduct {
+  id     String @id @default(uuid())
+  formId String
+
+  productCode      String
+  productName      String
+  productNameLocal String? // Japanese/local name
+  sapCode          String?
+
+  /// Decimal since 2026-09-21: service lines are booked in hours, so 1.5 and 0.35 are real
+  /// quantities. Three places, per Corlett Siobhan's request. Whole numbers are unaffected.
+  quantity       Decimal  @db.Decimal(12, 3)
+  unitPrice      Decimal  @db.Decimal(15, 2)
+  wholesalePrice Decimal? @db.Decimal(15, 2)
+  subtotal       Decimal  @db.Decimal(15, 2)
+
+  // Return flow only. Both default to the catalogue line total but are user-overridable, so they
+  // are stored rather than recomputed — subtotal alone cannot represent a credit that was edited.
+  returnAmount Decimal? @db.Decimal(15, 2)
+  rebillAmount Decimal? @db.Decimal(15, 2)
+
+  isConsumable Boolean   @default(false)
+  lotNumber    String?
+  expiryDate   DateTime?
+  note         String?   @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  form SalesForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+
+  @@index([formId])
+  @@index([productCode])
+  @@map("form_products")
+}
+
+// Approval workflow tracking
+model Approval {
+  id            String @id @default(uuid())
+  formId        String
+  approverId    String
+  approverName  String
+  approverEmail String
+
+  level Int // 1-6 (Sales Manager to Director)
+  role  String // Role name for this approval level
+
+  status   ApprovalStatus @default(PENDING)
+  decision String? // APPROVED or REJECTED
+  comments String?        @db.Text
+
+  // Token-based approval (for email links without login)
+  approvalToken  String?   @unique // Secure token for email approval links
+  tokenExpiresAt DateTime? // Token expiration (default: 30 days)
+
+  notifiedAt DateTime?
+  decidedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// When a SUPER_APPROVER approves/rejects on behalf of the assignee (`approverId`), set to the acting user id.
+  actualActorUserId String? @map("actual_actor_user_id")
+
+  // Relations
+  form        SalesForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  approver    User      @relation("ApprovalAssignee", fields: [approverId], references: [id])
+  actualActor User?     @relation("ApprovalActualActor", fields: [actualActorUserId], references: [id], onDelete: SetNull)
+  inboxDismissals ApprovalInboxDismissal[]
+
+  @@unique([formId, level])
+  @@index([formId])
+  @@index([approverId])
+  @@index([actualActorUserId])
+  @@index([status])
+  @@index([approvalToken])
+  @@map("approvals")
+}
+
+/// An approver's "Delete" on a rejected request in their inbox (7 Oct 2026).
+///
+/// It hides that rejection from this one person's inbox and nothing else: the request, its
+/// approvals, the requester's lists and every other inbox are untouched, and a super approver still
+/// sees the request in their table. It holds only while the step stays rejected as it was - a step
+/// reopened and rejected again is a new rejection (a later `decidedAt`) and shows again.
+model ApprovalInboxDismissal {
+  id          String   @id @default(uuid())
+  approvalId  String   @map("approval_id")
+  userId      String   @map("user_id")
+  dismissedAt DateTime @default(now()) @map("dismissed_at")
+
+  approval Approval @relation(fields: [approvalId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([approvalId, userId])
+  @@index([userId])
+  @@map("approval_inbox_dismissals")
+}
+
+enum ApprovalStatus {
+  PENDING
+  IN_PROGRESS
+  APPROVED
+  REJECTED
+}
+
+enum MasterDataStatus {
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+}
+
+enum ChangeType {
+  CREATE
+  UPDATE
+  DELETE
+  RESTORE
+}
+
+// Product catalog
+model Product {
+  id           String  @id @default(uuid())
+  cdgCode      String  @unique @map("cdg_code") @db.VarChar(10)
+  sapCode      String  @map("sap_code") @db.VarChar(20)
+  name         String  @db.VarChar(255)
+  price        Float
+  category     String?
+  isConsumable Boolean @default(false) @map("is_consumable")
+  isActive     Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([cdgCode])
+  @@index([sapCode])
+  @@index([name])
+  @@map("products")
+}
+
+// Channel Partners (Sold-To)
+model ChannelPartner {
+  id       String  @id @default(uuid())
+  code     String  @unique
+  name     String
+  address  String?
+  phone    String?
+  email    String?
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([code])
+  @@map("channel_partners")
+}
+
+// End Users
+model EndUser {
+  id       String  @id @default(uuid())
+  code     String  @unique
+  name     String
+  address  String?
+  phone    String?
+  email    String?
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([code])
+  @@map("end_users")
+}
+
+// Product Catalog - NEW (for business unit filtering)
+model ProductCatalog {
+  id               String  @id @default(uuid())
+  businessGroup    String // CDG or LSG
+  code             String
+  sapCode          String
+  name             String
+  productNameLocal String
+  price            Decimal @db.Decimal(15, 2)
+  listPrice        Decimal @db.Decimal(15, 2)
+  division         String?
+  statisticsGroup  String?
+  priceGroup       String?
+  /// From the Power BI master (ServiceFlag / DCHAIN). Informational: stored so the sample-eligibility
+  /// and service rules can be settled later without another import; nothing filters on them yet.
+  serviceFlag      String?
+  dchain           String?
+  /// 'manual' = created or restored by hand in the app; 'import' = loaded by an import or sync.
+  /// Informational since 8 Oct 2026: the Power BI master is the only source, so the sync removes a
+  /// manual row the master does not carry like any other.
+  sourceSystem     String?
+  /// Removed: the master does not carry the product, or carries it at list price 0/1 ("do not use").
+  /// A removed product is hidden everywhere - pickers, exports, the admin list - but the row and its
+  /// history stay, so a later master (or a version restore) brings it back on the same record. An
+  /// admin's own deactivation leaves this false: that product stays visible to admins, and inactive.
+  retiredBySync    Boolean @default(false)
+  /// lower(NFKC(code, sapCode, name, productNameLocal)), kept by a database trigger. Search matches on
+  /// it so half-width and full-width katakana (ﾘｸｲﾁｪｯｸ / リクイチェック) find the same product.
+  searchText       String?
+
+  // Soft delete
+  isActive Boolean @default(true)
+
+  // Approval workflow
+  status          MasterDataStatus @default(PENDING_APPROVAL)
+  submittedBy     String?
+  approvedBy      String?
+  rejectedBy      String?
+  rejectionReason String?          @db.Text
+  submittedAt     DateTime?
+  approvedAt      DateTime?
+  rejectedAt      DateTime?
+
+  // Audit trail
+  createdBy String?
+  updatedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations for audit trail
+  creator User? @relation("ProductCreator", fields: [createdBy], references: [id])
+  updater User? @relation("ProductUpdater", fields: [updatedBy], references: [id])
+
+  // Relations for approval workflow
+  submitter User? @relation("ProductSubmitter", fields: [submittedBy], references: [id])
+  approver  User? @relation("ProductApprover", fields: [approvedBy], references: [id])
+  rejector  User? @relation("ProductRejector", fields: [rejectedBy], references: [id])
+
+  // Change history relation
+  history ProductHistory[] @relation("ProductHistory")
+
+  @@unique([businessGroup, code])
+  @@index([businessGroup])
+  @@index([code])
+  @@index([isActive])
+  @@index([status])
+  @@index([submittedBy])
+  @@index([approvedBy])
+  @@map("product_catalog")
+}
+
+// Product Change History
+model ProductHistory {
+  id        String @id @default(uuid())
+  productId String
+  version   Int
+
+  // Snapshot of entire record at this version
+  businessGroup    String
+  code             String
+  sapCode          String
+  name             String
+  productNameLocal String
+  price            Decimal @db.Decimal(15, 2)
+  listPrice        Decimal @db.Decimal(15, 2)
+  division         String?
+  statisticsGroup  String?
+  priceGroup       String?
+  isActive         Boolean
+
+  // Change metadata
+  changedBy    String
+  changedAt    DateTime   @default(now())
+  changeType   ChangeType
+  changeReason String?    @db.Text
+
+  // Field-level changes
+  fieldChanges Json? // Array of { field, oldValue, newValue }
+
+  /// The product sync run that wrote this row, so a run's changes can be listed and audited together.
+  syncRunId String?
+
+  // Relations
+  product ProductCatalog @relation("ProductHistory", fields: [productId], references: [id], onDelete: Cascade)
+  changer User?          @relation("ProductChanger", fields: [changedBy], references: [id])
+
+  @@unique([productId, version])
+  @@index([productId])
+  @@index([changedAt])
+  @@index([changedBy])
+  @@index([syncRunId])
+  @@map("product_history")
+}
+
+/// One product master sync: a snapshot of the master (today the Power BI export, uploaded by hand)
+/// diffed against the catalogue, previewed, and - once signed off - applied as one transaction.
+/// The preview and the apply are separate steps because sign-off can take days.
+model ProductSyncRun {
+  id String @id @default(uuid())
+  /// upload | bulk-import | cli
+  source  String
+  /// manual (an admin on the sync page), bulk-import (the legacy products import routed through
+  /// the engine), cli
+  trigger String
+  /// full-snapshot: the file is the whole master, so a code missing from it is retired.
+  /// upsert-only: a partial legacy sheet; it can add and change but never retire.
+  mode   String
+  /// PREVIEWING | PREVIEWED | APPLYING | APPLIED | FAILED | SUPERSEDED
+  status String
+
+  fileName      String?
+  /// The "Applied filters" footer the Power BI export carries, when present.
+  appliedFilter String?
+  /// SHA-256 of the normalised snapshot rows; proves the apply ran on the previewed data.
+  fingerprint     String?
+  /// SHA-256 of the diff computed at preview; apply recomputes it and refuses on drift.
+  diffFingerprint String?
+
+  counts  Json?
+  guards  Json?
+  samples Json?
+  error   String? @db.Text
+
+  /// An admin may apply over a failed guard; who and why is recorded here.
+  guardOverrideReason String? @db.Text
+
+  triggeredBy     String?
+  triggeredByName String?
+
+  /// The master's version number: 1, 2, 3... in apply order. Set inside the apply transaction, so a
+  /// run has one exactly when its writes were committed.
+  version           Int?    @unique
+  /// A restore is a new run made from an earlier version's stored file; this names that version's run.
+  restoredFromRunId String?
+  /// Why the run was made, when someone said: the reason given for a restore.
+  note              String? @db.Text
+
+  startedAt      DateTime  @default(now())
+  previewedAt    DateTime?
+  applyStartedAt DateTime?
+  finishedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  rows ProductSyncRunRow[]
+  file ProductSyncFile?
+
+  @@index([status])
+  @@index([startedAt])
+  @@map("product_sync_runs")
+}
+
+/// The file a run was made from, byte for byte, so a version can be downloaded and restored. Kept for
+/// every applied version; a run that never applied loses its file after 30 days.
+model ProductSyncFile {
+  runId       String   @id
+  fileName    String?
+  contentType String
+  sizeBytes   Int
+  sha256      String
+  content     Bytes
+  createdAt   DateTime @default(now())
+
+  run ProductSyncRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@map("product_sync_files")
+}
+
+/// One line of a run: the normalised snapshot row (what the master said) plus what the diff decided
+/// to do with it. Rows the catalogue holds but the master omits are stored too (action RETIRE),
+/// so the preview pages every bucket from here and the apply works from exactly what was shown.
+model ProductSyncRunRow {
+  id    String @id @default(uuid())
+  runId String
+
+  /// CREATE | UPDATE | REACTIVATE | UNCHANGED | RETIRE | KEEP_INACTIVE | HELD | SKIPPED | INVALID
+  action String
+  /// HELD rows only: COLLISION (two file rows, one code) | AMBIGUOUS (one SAP code, several products)
+  /// | RENAME_BLOCKED. The apply reloads a collision as held and re-derives the other two.
+  holdKind String?
+  /// Matched catalogue row, when there is one.
+  productId String?
+
+  businessGroup    String
+  code             String
+  sapCode          String
+  name             String
+  productNameLocal String
+  price            Decimal? @db.Decimal(15, 2)
+  listPrice        Decimal? @db.Decimal(15, 2)
+  priceGroup       String?
+  serviceFlag      String?
+  dchain           String?
+  /// Row number in the file, for the operator; null for catalogue-only rows.
+  rowIndex Int?
+
+  /// Why a row was held back or skipped, or the catalogue code an UPDATE renames from.
+  reason       String?
+  fieldChanges Json?
+
+  run ProductSyncRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId, action])
+  @@index([runId, businessGroup, code])
+  @@map("product_sync_run_rows")
+}
+
+// Customers - Unified table for SOLD-TO, End Users, Direct Delivery - NEW
+model Customer {
+  id            String  @id @default(uuid())
+  businessGroup String // CDG or LSG
+  firstDigit    String // '1' = SOLD-TO, '2' = Direct Delivery, '8' = End User, '9' = optional/personal (sales)
+  code          String
+  sapCode       String
+  nameJp        String
+  nameEn        String
+  postalCode    String?
+  prefecture    String?
+  address       String? @db.Text
+  phone         String?
+
+  // Soft delete
+  isActive Boolean @default(true)
+
+  // Approval workflow
+  status          MasterDataStatus @default(PENDING_APPROVAL)
+  submittedBy     String?
+  approvedBy      String?
+  rejectedBy      String?
+  rejectionReason String?          @db.Text
+  submittedAt     DateTime?
+  approvedAt      DateTime?
+  rejectedAt      DateTime?
+
+  // Audit trail
+  createdBy String?
+  updatedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations for audit trail
+  creator User? @relation("CustomerCreator", fields: [createdBy], references: [id])
+  updater User? @relation("CustomerUpdater", fields: [updatedBy], references: [id])
+
+  // Relations for approval workflow
+  submitter User? @relation("CustomerSubmitter", fields: [submittedBy], references: [id])
+  approver  User? @relation("CustomerApprover", fields: [approvedBy], references: [id])
+  rejector  User? @relation("CustomerRejector", fields: [rejectedBy], references: [id])
+
+  // Change history relation
+  history CustomerHistory[] @relation("CustomerHistory")
+
+  @@index([businessGroup])
+  @@index([firstDigit])
+  @@index([code])
+  @@index([businessGroup, firstDigit])
+  @@index([isActive])
+  @@index([status])
+  @@index([submittedBy])
+  @@index([approvedBy])
+  @@map("customers")
+}
+
+// Customer Change History
+model CustomerHistory {
+  id         String @id @default(uuid())
+  customerId String
+  version    Int
+
+  // Snapshot of entire record at this version
+  businessGroup String
+  firstDigit    String
+  code          String
+  sapCode       String
+  nameJp        String
+  nameEn        String
+  postalCode    String?
+  prefecture    String?
+  address       String? @db.Text
+  phone         String?
+  isActive      Boolean
+
+  // Change metadata
+  changedBy    String
+  changedAt    DateTime   @default(now())
+  changeType   ChangeType
+  changeReason String?    @db.Text
+
+  // Field-level changes (JSON)
+  fieldChanges Json? // Array of { field, oldValue, newValue }
+
+  // Relations
+  customer Customer @relation("CustomerHistory", fields: [customerId], references: [id], onDelete: Cascade)
+  changer  User?    @relation("CustomerChanger", fields: [changedBy], references: [id])
+
+  @@index([customerId])
+  @@index([changedAt])
+  @@index([changedBy])
+  @@index([customerId, version])
+  @@map("customer_history")
+}
+
+// User Change History
+model UserHistory {
+  id         String     @id @default(uuid())
+  userId     String
+  user       User       @relation("UserHistory", fields: [userId], references: [id], onDelete: Cascade)
+  version    Int
+  changeType ChangeType // CREATE, UPDATE, DELETE, RESTORE
+
+  // Changed fields (JSON array of {field, oldValue, newValue})
+  fieldChanges Json?
+
+  changedBy    String?
+  changer      User?    @relation("UserChanger", fields: [changedBy], references: [id])
+  changedAt    DateTime @default(now())
+  changeReason String?  @db.Text
+
+  @@index([userId])
+  @@index([changedAt])
+  @@index([changeType])
+  @@index([userId, version])
+  @@map("user_history")
+}
+
+// Key-value app UI copy (e.g. wizard step 2 “data last updated” line)
+model AppSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+
+  @@map("app_settings")
+}

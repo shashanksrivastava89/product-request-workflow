@@ -1,0 +1,196 @@
+{
+  "groups": [
+    {
+      "id": 1,
+      "name": "CDG Sales Team A",
+      "businessUnit": "CDG",
+      "requesters": [
+        {
+          "id": 1,
+          "code": "R001",
+          "name": "TAKAHASHI TOMOYA"
+        },
+        {
+          "id": 2,
+          "code": "R002",
+          "name": "SHIMIZU CHIYO"
+        },
+        {
+          "id": 3,
+          "code": "R003",
+          "name": "OTA SATOMI"
+        },
+        {
+          "id": 4,
+          "code": "R004",
+          "name": "HAYASHI KAZUYA"
+        },
+        {
+          "id": 5,
+          "code": "R005",
+          "name": "MATSUDA OSAMU"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "CDG Sales Team B",
+      "businessUnit": "CDG",
+      "requesters": [
+        {
+          "id": 6,
+          "code": "R006",
+          "name": "INOUE JUN"
+        },
+        {
+          "id": 7,
+          "code": "R007",
+          "name": "YAMAMOTO SOTARO"
+        },
+        {
+          "id": 8,
+          "code": "R008",
+          "name": "INOUE SATOMI"
+        },
+        {
+          "id": 9,
+          "code": "R009",
+          "name": "YAMAMOTO MAI"
+        },
+        {
+          "id": 10,
+          "code": "R010",
+          "name": "TANAKA CHIYO"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "LSG Sales Team A",
+      "businessUnit": "LSG",
+      "requesters": [
+        {
+          "id": 11,
+          "code": "R011",
+          "name": "KIMURA TAKUMA"
+        },
+        {
+          "id": 12,
+          "code": "R012",
+          "name": "KOBAYASHI SAYURI"
+        },
+        {
+          "id": 13,
+          "code": "R013",
+          "name": "YAMASHITA SATOMI"
+        },
+        {
+          "id": 14,
+          "code": "R014",
+          "name": "SATO TSUBASA"
+        },
+        {
+          "id": 15,
+          "code": "R015",
+          "name": "SASAKI KUMIKO"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "LSG Sales Team B",
+      "businessUnit": "LSG",
+      "requesters": [
+        {
+          "id": 16,
+          "code": "R016",
+          "name": "YOSHIDA MITURU"
+        },
+        {
+          "id": 17,
+          "code": "R017",
+          "name": "YAMADA REI"
+        },
+        {
+          "id": 18,
+          "code": "R018",
+          "name": "KOBAYASHI NAOKI"
+        },
+        {
+          "id": 19,
+          "code": "R019",
+          "name": "OGAWA MIKAKO"
+        },
+        {
+          "id": 20,
+          "code": "R020",
+          "name": "GOTO KENICHI"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Service & Support",
+      "businessUnit": "CDG/LSG",
+      "requesters": [
+        {
+          "id": 21,
+          "code": "R021",
+          "name": "KIMURA KANA"
+        },
+        {
+          "id": 22,
+          "code": "R022",
+          "name": "SASAKI MINORU"
+        },
+        {
+          "id": 23,
+          "code": "R023",
+          "name": "ISHIKAWA HIROSHI"
+        },
+        {
+          "id": 24,
+          "code": "R024",
+          "name": "SAITO KYOSUKE"
+        },
+        {
+          "id": 25,
+          "code": "R025",
+          "name": "SUZUKI YOSUKE"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "Marketing",
+      "businessUnit": "CDG/LSG",
+      "requesters": [
+        {
+          "id": 26,
+          "code": "R026",
+          "name": "TAKAHASHI MINORU"
+        },
+        {
+          "id": 27,
+          "code": "R027",
+          "name": "TAKAHASHI ASUKA"
+        },
+        {
+          "id": 28,
+          "code": "R028",
+          "name": "YOSHIDA MAAYA"
+        },
+        {
+          "id": 29,
+          "code": "R029",
+          "name": "SUZUKI SAYURI"
+        },
+        {
+          "id": 30,
+          "code": "R030",
+          "name": "KIMURA MITURU"
+        }
+      ]
+    }
+  ]
+}

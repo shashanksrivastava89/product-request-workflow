@@ -1,0 +1,54 @@
+{
+  "name": "sales-form-backend",
+  "version": "1.0.0",
+  "description": "Backend API for Sales Form Approval System",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "nodemon src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "migrate": "prisma migrate deploy",
+    "generate": "prisma generate",
+    "init": "ts-node src/init.ts",
+    "set-passwords": "ts-node src/scripts/set-passwords.ts",
+    "create-test-flow": "ts-node src/scripts/create-approval-flow-test.ts",
+    "test:sso-email-claims": "ts-node src/utils/sso-email-from-claims.util.test.ts",
+    "test:people-offboarding": "ts-node src/services/people-offboarding.test.ts",
+    "test:product-sync": "ts-node src/utils/zip-deflate.test.ts && ts-node src/services/import/parser.test.ts && ts-node src/services/import/validate-products.test.ts && ts-node src/services/product-sync/diff.test.ts && ts-node src/services/product-sync/run-rows.test.ts",
+    "product-sync": "ts-node src/scripts/product-sync.ts"
+  },
+  "keywords": [
+    "express",
+    "typescript",
+    "json-storage"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@prisma/client": "^6.19.1",
+    "bcrypt": "^5.1.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "jwks-rsa": "^3.2.0",
+    "multer": "^2.0.2",
+    "nodemailer": "^6.9.15",
+    "prisma": "^6.19.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.3",
+    "xlsx": "^0.18.5",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/multer": "^2.0.0",
+    "@types/node": "^22.9.1",
+    "@types/nodemailer": "^6.4.16",
+    "nodemon": "^3.1.7"
+  }
+}

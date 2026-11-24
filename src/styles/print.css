@@ -1,0 +1,345 @@
+/* Screen: section subtitles used in print layouts (match print density cues) */
+.print-subtitle {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0 0 0.35rem 0;
+}
+
+/* Print-specific styles — dense layout, multi-column where useful */
+
+@media print {
+  /* Hide non-printable elements */
+  .no-print,
+  nav,
+  header,
+  header nav,
+  button:not(.print-button),
+  .filters,
+  .actions:not(.print-actions),
+  .print-actions button:not(.print-button),
+  .bg-gradient-to-br,
+  .shadow-xl,
+  .shadow-lg,
+  .shadow-md {
+    display: none !important;
+  }
+
+  @page {
+    size: A4;
+    margin: 1cm;
+  }
+
+  body {
+    font-size: 10pt;
+    line-height: 1.22;
+    color: #000;
+    background: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  }
+
+  .print-container {
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Compact header: one band */
+  .print-header {
+    border-bottom: 1px solid #000;
+    padding-bottom: 6px;
+    margin-bottom: 8px;
+    page-break-inside: avoid;
+  }
+
+  .print-header--compact .print-header-top {
+    margin-bottom: 0 !important;
+  }
+
+  .print-header--compact .print-header-inner {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .print-header--compact .print-logo img {
+    max-height: 28px !important;
+  }
+
+  .print-header h1 {
+    font-size: 11pt;
+    font-weight: bold;
+    margin: 0 0 2px 0;
+    color: #000;
+  }
+
+  .print-header .reference-number {
+    font-size: 9.5pt;
+    font-weight: bold;
+    color: #000;
+    margin: 0;
+  }
+
+  .print-header .status {
+    font-size: 9pt;
+    color: #333;
+    margin: 0;
+  }
+
+  .print-header-meta {
+    font-size: 7.5pt;
+    color: #555;
+    margin-top: 4px;
+    padding-top: 4px;
+    border-top: 1px solid #ccc;
+  }
+
+  .print-logo img {
+    max-height: 32px;
+    width: auto;
+  }
+
+  .print-section {
+    margin-bottom: 8px;
+    page-break-inside: auto;
+  }
+
+  .print-section--tight {
+    margin-bottom: 4px;
+  }
+
+  .print-section--follow {
+    margin-top: 0;
+  }
+
+  .print-section--follow > .print-section-title {
+    margin-top: 0;
+    padding-top: 2px;
+  }
+
+  /* Keep small blocks together; allow long sections to break */
+  .print-section--keep {
+    page-break-inside: avoid;
+  }
+
+  .print-section-title {
+    font-size: 10pt;
+    font-weight: bold;
+    border-bottom: 1px solid #999;
+    padding-bottom: 2px;
+    margin-bottom: 4px;
+    color: #000;
+  }
+
+  .print-subtitle {
+    font-size: 8.5pt;
+    font-weight: bold;
+    color: #222;
+    margin: 0 0 3px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+
+  .print-content {
+    color: #000;
+  }
+
+  /* Multi-column grids for print (replaces old .grid { display:block } kill-switch) */
+  .print-cols-2 {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2px 10px;
+    font-size: 9pt;
+  }
+
+  .print-cols-3 {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 2px 8px;
+    font-size: 9pt;
+  }
+
+  .print-cols-2 > *,
+  .print-cols-3 > * {
+    margin-bottom: 0 !important;
+    min-width: 0;
+  }
+
+  .print-span-2 {
+    grid-column: span 2;
+  }
+
+  .print-span-3 {
+    grid-column: 1 / -1;
+  }
+
+  /* Screen grids: keep 2-col on print when using Tailwind grid-cols-2 + dense helpers */
+  .print-form-content .grid.grid-cols-2 {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 2px 8px !important;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 4px 0;
+    font-size: 8.5pt;
+    page-break-inside: auto;
+  }
+
+  table.print-table-dense th,
+  table.print-table-dense td {
+    padding: 2px 4px !important;
+    line-height: 1.2;
+    border: 1px solid #aaa;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tfoot {
+    display: table-footer-group;
+  }
+
+  tr {
+    page-break-inside: avoid;
+  }
+
+  table th,
+  table td {
+    border: 1px solid #ccc;
+    padding: 4px 6px;
+    text-align: left;
+  }
+
+  table th {
+    background-color: #eee !important;
+    font-weight: bold;
+    color: #000;
+    font-size: 8.5pt;
+  }
+
+  table td {
+    color: #000;
+    vertical-align: top;
+  }
+
+  table tfoot {
+    font-weight: bold;
+    background-color: #f0f0f0;
+  }
+
+  .page-break {
+    page-break-before: always;
+  }
+
+  .no-break {
+    page-break-inside: avoid;
+  }
+
+  .print-header {
+    page-break-inside: avoid;
+  }
+
+  .bg-white,
+  .bg-gray-50,
+  .bg-gray-100 {
+    background: #fff !important;
+  }
+
+  .rounded-xl,
+  .rounded-lg,
+  .rounded-md {
+    border-radius: 0 !important;
+  }
+
+  .text-gray-900,
+  .text-gray-800,
+  .text-gray-700 {
+    color: #000 !important;
+  }
+
+  .text-gray-600,
+  .text-gray-500 {
+    color: #333 !important;
+  }
+
+  button,
+  .btn,
+  a.button {
+    display: none !important;
+  }
+
+  .draft-watermark {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-45deg);
+    font-size: 72pt;
+    color: rgba(0, 0, 0, 0.1);
+    z-index: -1;
+    pointer-events: none;
+    font-weight: bold;
+  }
+
+  .print-footer {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    border-top: 1px solid #ccc;
+    padding-top: 4px;
+    font-size: 7.5pt;
+    text-align: center;
+    color: #666;
+  }
+
+  .space-y-4 > * + * {
+    margin-top: 6px !important;
+  }
+
+  .space-y-6 > * + * {
+    margin-top: 8px !important;
+  }
+
+  .space-y-8 > * + * {
+    margin-top: 10px !important;
+  }
+
+  /* Success page: strip marketing hero on paper */
+  .print-success-strip {
+    padding: 6px 0 !important;
+    text-align: left !important;
+  }
+
+  .print-success-strip h1 {
+    font-size: 11pt !important;
+    margin: 0 0 2px 0 !important;
+  }
+
+  ul,
+  ol {
+    margin: 4px 0;
+    padding-left: 18px;
+  }
+
+  li {
+    margin: 2px 0;
+  }
+
+  .badge,
+  .status-badge {
+    border: 1px solid #000;
+    padding: 2px 5px;
+    border-radius: 2px;
+    font-size: 8.5pt;
+    background: #fff !important;
+    color: #000 !important;
+  }
+}

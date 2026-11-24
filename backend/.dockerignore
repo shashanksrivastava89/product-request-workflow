@@ -1,0 +1,56 @@
+# Dependencies
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Build outputs
+dist
+*.tsbuildinfo
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+!README.md
+
+# Scripts (not needed in production)
+scripts
+
+# Data files (not needed in production)
+data
+
+# Migrations (keep SQL files, but not TS scripts)
+migrations/*.ts
+!migrations/*.sql
+
+# Test files
+*.test.ts
+*.spec.ts
+__tests__
+
+# Logs
+logs
+*.log
+
+# Temporary files
+tmp
+temp
+*.tmp

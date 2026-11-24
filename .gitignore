@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+
+# Secrets – never commit
+.env
+backend/.env
+# Build output
+dist/
+backend/dist/
+*.tsbuildinfo
+# IDE / OS
+.vscode/
+.idea/
+.cursor/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+# Logs / temp
+logs/
+uploads/
+backend/uploads/
+backend/tmp/
+*.log
+npm-debug.log*
+# Documentation and PowerShell scripts (excluded per plan)
+# Master data for DB import — must be versioned
+*.ps1
+*.ps
+.venv/
+venv/
+build/
+coverage/
+__pycache__/
+.pytest_cache/
+.env.*
+.storage*/
+dist-scenarios/
+test-results/
+playwright-report/
+!.env.example
+!**/.env.example
+!**/.env.*.example
